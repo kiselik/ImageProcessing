@@ -10,31 +10,40 @@
 using namespace std;
 using namespace cv;
 
+void load_standart(vector <cv::Mat> standart_picture)
+{
+	
+	for (int i = 0;i < 32;i++)
+	{
+		string str = "Picture" + to_string(i)+".png";
+		standart_picture.push_back(imread(str));
+
+		if (standart_picture[i].empty())
+		{
+			cout << "File not found" << endl;
+			system("pause");
+			exit(0);
+		}
+
+	}
+
+}
 
 int main()
 {
-	int treashold = 0;
-	//IplImage* img =  cvLoadImage("img.png");	//Загрузка картинки
-	Mat img = imread("img.png");
-	//Проверка загрузки
-	if (img.empty())
-	{
-		cout << "File not found" << endl;
-		system("pause");
-		exit(0);
-	}
-	//Преобразуем картинку в ч/б
+	vector <cv::Mat> standart_picture;
+	load_standart(standart_picture);
 	Mat image;
 
-	cvtColor(img, image, COLOR_BGR2GRAY);
-	segm_line a(image);
+
+	segm_line a("img.png");
 	a.do_segmentation();
 	
 
 	
 
-	imshow("Picture1", img);
-	imshow("Picture", image);
+	//imshow("Picture1", img);
+	//imshow("Picture", image);
 	waitKey(0);
 
 	system("pause");

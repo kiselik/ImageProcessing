@@ -19,33 +19,21 @@ private:
 	vector<int> row_up;
 	vector<int> row_down;
 
-	//return "true" then all pixels in column are white
-	bool Check_Bright_Column(int column_start)
-	{
-		bool flag = true;
-		int column_final = 0;
-		column_final += column_start;
-		Clamp(column_final++, 0, image.cols);
-		for (int i = column_start;i < column_final;i++)
-			for (int j = 0;j < image.rows;j++)
-				if (image.at<uchar>(j, i) == 0)
-				{
-					flag = false;
-					break;
-				}
-		return flag;
-	}
-	bool Check_Bright_Column_(int column)
+	vector <cv::Mat> picture;
+
+	//return "true" then all pixels in column are white	
+	bool Check_Bright_Column(int column)
 	{
 		bool flag = true;
 		for (int i = 0;i < image.rows;i++)
-			if (image.at<uchar>(i, column) == 0)
+			if (image.at<uchar>(i, column) != 255)
 			{
 				flag = false;
 				break;
 			}
 		return flag;
 	}
+
 	//return "true" then all pixels in column are white
 	bool Check_Bright_Row(int row_start, int tmp_column_left, int tmp_column_right)
 	{
@@ -55,25 +43,15 @@ private:
 		Clamp(row_final++, 0, image.rows);
 		for (int i = row_start;i < row_final;i++)
 			for (int j = tmp_column_left;j < tmp_column_right;j++)
-				if (image.at<uchar>(i, j)!=255)
+				if (image.at<uchar>(i, j) != 255)
 				{
 					flag = false;
 					break;
 				}
 		return flag;
 	}
-	bool Check_Bright_Row_(int row_start)
-	{
-		bool flag = true;
-		for (int j = 0; j < image.cols; j++)
-			if (image.at<uchar>(row_start, j) != 255)
-			{
-				flag = false;
-				break;
-			}
-		return flag;
-	}
 
+	//ищем все границы
 	void Find_Border_Symbols()
 	{
 		Find_Left_Border();
@@ -86,6 +64,7 @@ private:
 
 	}
 
+	//ищем левые границы
 	void Find_Left_Border()
 	{
 		for (int j = 0; j < image.cols; j++)
@@ -98,6 +77,7 @@ private:
 		}
 	}
 
+	//ищем правые границы
 	void Find_Right_Border()
 	{
 		for (int j = 0; j < image.cols; j++)
@@ -135,7 +115,8 @@ private:
 			}
 		}
 	}
-	void Draw(int col,int row, int cols, int rows)
+
+	/*void Draw(int col,int row, int cols, int rows)
 	{
 		for (int i =row ;i < rows;i++)
 			for (int j = col;j <cols;j++)
@@ -143,22 +124,11 @@ private:
 				image.at<uchar>(i, j) = 0;
 			}
 
-	}
+	}*/
 
 	void create_Words()
 	{
 		Find_Border_Symbols();
-
-		vector <cv::Mat> picture;
-
-		for (int i = 0;i < column_left.size();i++)
-		{
-			//сосчитали временную ширину столбца
-			int tmp_size_column = abs(column_right[i] - column_left[i]);
-			int tmp_size_row = abs(row_down[i] - row_up[i]);
-			//Draw(column_left[i], row_down[i], column_left[i]+tmp_size_column, row_down[i]+ tmp_size_row);
-		}
-		imshow("tmp",image);
 
 		int delta = 5;
 		for (int i = 0;i < column_left.size();i++)
@@ -167,23 +137,30 @@ private:
 			int tmp_size_column = abs(column_right[i] - column_left[i]);
 			int tmp_size_row = abs(row_down[i] - row_up[i]);
 
-			picture.push_back(cv::Mat(tmp_size_row + 2 * delta, tmp_size_column + 2 * delta, CV_8U));
-			image(cv::Rect(column_left[i], row_down[i], tmp_size_column, tmp_size_row)).copyTo(picture[i]);
+			picture.push_back(cv::Mat(tmp_size_row, tmp_size_column, CV_8U));
 
-			//Mat *picture = new Mat*(tmp_size_row, tmp_size_column, COLOR_BGR2GRAY);
+			image(cv::Rect(column_left[i], row_down[i], tmp_size_column, tmp_size_row)).copyTo(picture[i]);
 			string str = "Picture" + to_string(i);
 			namedWindow(str, 0);
 			imshow(str, picture[i]);
 		}
 
-
-
 	}
 
 public:
-	segm_line(Mat img)
+	segm_line(string img)
 	{
-		image = img;
+		Mat tmp = imread(img);
+		if (tmp.empty())
+		{
+			cout << "File not found" << endl;
+			system("pause");
+			exit(0);
+		}
+		cvtColor(tmp, image, COLOR_BGR2GRAY);
+
+
+
 	}
 
 	~segm_line()
@@ -199,15 +176,36 @@ public:
 	}
 
 
-
 	void do_segmentation()
 	{
 		create_Words();
-		cout << column_left.size() << endl;
+
+		/*cout << column_left.size() << endl;
 		cout << column_right.size() << endl;
 		cout << row_up.size() << endl;
-		cout << row_down.size() << endl;
+		cout << row_down.size() << endl;*/
 	}
+
+	int Check_image(Mat test_image, vector <cv::Mat> standart_image)
+	{
+		int min = 10000000;
+		int kmin = 0;
+		for (int k = 0;k < standart_image.size();k++)
+		{
+			int sum = 0;
+			int i, j;
+			for (i = 0;i < test_image.rows;i++)
+				for (j = 0;j < test_image.cols;j++)
+				{
+					sum += sqrt(test_image.at<uchar>(i, j)*test_image.at<uchar>(i, j) - standart_image[k].at<uchar>(i, j)*standart_image[k].at<uchar>(i, j));
+				}
+			sum = (float)sum / (i*j);
+			if (sum < min) kmin = k;
+		}
+
+		return kmin;
+	}
+
 
 
 };
