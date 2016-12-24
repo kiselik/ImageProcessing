@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+#include <math.h>
 
 using namespace std;
 using namespace cv;
@@ -13,13 +14,14 @@ using namespace cv;
 class segm_line
 {
 private:
+
 	Mat image;
 	vector<int> column_left;
 	vector<int> column_right;
 	vector<int> row_up;
 	vector<int> row_down;
 
-	vector <cv::Mat> picture;
+	vector <cv::Mat> test_picture;
 
 	//return "true" then all pixels in column are white	
 	bool Check_Bright_Column(int column)
@@ -85,7 +87,7 @@ private:
 			// if current column has black pixsels AND next hasn't, we find new symbol 
 			if ((!Check_Bright_Column(j)) && Check_Bright_Column(Clamp((j + 1), 0, image.cols)))
 			{
-				column_right.push_back(j + 1);
+				column_right.push_back(j);
 			}
 		}
 	}
@@ -116,17 +118,7 @@ private:
 		}
 	}
 
-	/*void Draw(int col,int row, int cols, int rows)
-	{
-		for (int i =row ;i < rows;i++)
-			for (int j = col;j <cols;j++)
-			{
-				image.at<uchar>(i, j) = 0;
-			}
-
-	}*/
-
-	void create_Words()
+	void Create_Words()
 	{
 		Find_Border_Symbols();
 
@@ -137,14 +129,55 @@ private:
 			int tmp_size_column = abs(column_right[i] - column_left[i]);
 			int tmp_size_row = abs(row_down[i] - row_up[i]);
 
-			picture.push_back(cv::Mat(tmp_size_row, tmp_size_column, CV_8U));
+			test_picture.push_back(cv::Mat(tmp_size_row, tmp_size_column, CV_8U));
 
-			image(cv::Rect(column_left[i], row_down[i], tmp_size_column, tmp_size_row)).copyTo(picture[i]);
-			string str = "Picture" + to_string(i);
+			image(cv::Rect(column_left[i], row_down[i], tmp_size_column, tmp_size_row)).copyTo(test_picture[i]);
+			string str = "test_picture" + to_string(i);
 			namedWindow(str, 0);
-			imshow(str, picture[i]);
+			imshow(str, test_picture[i]);
 		}
 
+	}
+
+	void Threshold(Mat & tmp)
+	{
+		for (int i = 0;i < tmp.rows;i++)
+			for (int j = 0;j < tmp.cols;j++)
+				if (tmp.at<uchar>(i, j) != 255)
+				{
+					tmp.at<uchar>(i, j) = 0;
+				}
+
+	}
+
+	int Check_image(Mat test_image, vector <cv::Mat> standart)
+	{
+		int min = 10000000;
+		int kmin = 0;
+		int sum;
+		for (int k = 0;k < standart.size();k++)
+		{
+			sum = 0;
+			for (int i = 0;i < test_image.rows;i++)
+			{
+				for (int j = 0;j < test_image.cols;j++)
+				{
+					//test_image.at<uchar>(i, j)*test_image.at<uchar>(i, j) - standart[k].at<uchar>(i, j)*standart[k].at<uchar>(i, j);
+					sum += sqrt(abs(test_image.at<uchar>(i, j)*test_image.at<uchar>(i, j) - standart[k].at<uchar>(i, j)*standart[k].at<uchar>(i, j)));
+				}
+			}
+			sum = (float)sum / (test_image.rows*test_image.cols);
+			//cout << sum << endl;
+			if (sum < min)
+			{
+				min = sum;
+				kmin = k;
+			}
+
+		}
+
+
+		return kmin;
 	}
 
 public:
@@ -158,6 +191,7 @@ public:
 			exit(0);
 		}
 		cvtColor(tmp, image, COLOR_BGR2GRAY);
+		Threshold(image);
 
 
 
@@ -175,36 +209,131 @@ public:
 		return value;
 	}
 
-
-	void do_segmentation()
+	string Do_segmentation(vector <cv::Mat> & standart)
 	{
-		create_Words();
-
-		/*cout << column_left.size() << endl;
-		cout << column_right.size() << endl;
-		cout << row_up.size() << endl;
-		cout << row_down.size() << endl;*/
-	}
-
-	int Check_image(Mat test_image, vector <cv::Mat> standart_image)
-	{
-		int min = 10000000;
-		int kmin = 0;
-		for (int k = 0;k < standart_image.size();k++)
+		Create_Words();
+		string result;
+		for (int i = 0;i < test_picture.size();i++)
 		{
-			int sum = 0;
-			int i, j;
-			for (i = 0;i < test_image.rows;i++)
-				for (j = 0;j < test_image.cols;j++)
-				{
-					sum += sqrt(test_image.at<uchar>(i, j)*test_image.at<uchar>(i, j) - standart_image[k].at<uchar>(i, j)*standart_image[k].at<uchar>(i, j));
-				}
-			sum = (float)sum / (i*j);
-			if (sum < min) kmin = k;
-		}
 
-		return kmin;
+			int tmp = 0;
+			resize(/*sourse*/test_picture[i], /*destination*/test_picture[i], cvSize(16, 16));
+			tmp = Check_image(test_picture[i], standart);
+			result += convert(tmp);
+		}
+		return result;
 	}
+
+	string convert(int word)
+	{
+		string tmp;
+		switch (word)
+		{
+		case 0:
+			tmp = 'А';
+			break;
+		case 1:
+			tmp = 'Б';
+			break;
+		case 2:
+			tmp = 'В';
+			break;
+		case 3:
+			tmp = 'Г';
+			break;
+		case 4:
+			tmp = 'Д';
+			break;
+		case 5:
+			tmp = 'Е';
+			break;
+
+		case 6:
+			tmp = 'Ё';
+			break;
+		case 7:
+			tmp = 'Ж';
+			break;
+		case 8:
+			tmp = 'З';
+			break;
+		case 9:
+			tmp = 'И';
+			break;
+		case 10:
+			tmp = 'Й';
+			break;
+		case 11:
+			tmp = 'К';
+			break;
+		case 12:
+			tmp = 'Л';
+			break;
+		case 13:
+			tmp = 'М';
+			break;
+		case 14:
+			tmp = 'Н';
+			break;
+		case 15:
+			tmp = 'О';
+			break;
+		case 16:
+			tmp = 'П';
+			break;
+		case 17:
+			tmp = 'Р';
+			break;
+		case 18:
+			tmp = 'С';
+			break;
+		case 19:
+			tmp = 'Т';
+			break;
+		case 20:
+			tmp = 'У';
+			break;
+		case 21:
+			tmp = 'Ф';
+			break;
+		case 22:
+			tmp = 'Х';
+			break;
+		case 23:
+			tmp = 'Ц';
+			break;
+		case 24:
+			tmp = 'Ч';
+			break;
+		case 25:
+			tmp = 'Ш';
+			break;
+		case 26:
+			tmp = 'Щ';
+			break;
+		case 27:
+			tmp = 'Ъ';
+			break;
+		case 28:
+			tmp = 'Ь';
+			break;
+		case 29:
+			tmp = 'Э';
+			break;
+		case 30:
+			tmp = 'Ю';
+			break;
+		case 31:
+			tmp = 'Я';
+			break;
+		default:
+			tmp = "Возможно, я пока не знаю такой буквы";
+			break;
+		}
+		return tmp;
+	}
+
+
 
 
 
